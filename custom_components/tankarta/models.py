@@ -40,6 +40,7 @@ class PriceReading:
     product: str
     display_name: str
     price: Decimal
+    division_id: Any
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,7 +100,7 @@ def parse_prices(
     if not privacy_salt:
         raise TankartaDataError("A privacy salt is required")
 
-    parsed: dict[str, tuple[str, Decimal]] = {}
+    parsed: dict[str, tuple[str, Decimal, Any]] = {}
     skipped = 0
 
     for item in payload:
@@ -118,31 +119,33 @@ def parse_prices(
             division_id=item.get("divisionID"),
             product=product,
         )
+        division_id = item.get("divisionID")
         previous = parsed.get(key)
         if previous is not None and previous[1] != price:
             raise TankartaDataError(
                 f"Tankarta returned conflicting prices for product {product!r}"
             )
-        parsed[key] = (product, price)
+        parsed[key] = (product, price, division_id)
 
     if not parsed:
         raise TankartaDataError("Tankarta returned no valid product prices")
 
     by_product: dict[str, list[str]] = defaultdict(list)
-    for key, (product, _price_value) in parsed.items():
+    for key, (product, _price_value, _division_id) in parsed.items():
         by_product[product.casefold()].append(key)
 
     readings: dict[str, PriceReading] = {}
     for product_group in sorted(by_product):
         keys = sorted(by_product[product_group])
         for index, key in enumerate(keys, start=1):
-            product, price = parsed[key]
+            product, price, division_id = parsed[key]
             display_name = product if len(keys) == 1 else f"{product} (varianta {index})"
             readings[key] = PriceReading(
                 key=key,
                 product=product,
                 display_name=display_name,
                 price=price,
+                division_id=division_id,
             )
 
     return TankartaData(

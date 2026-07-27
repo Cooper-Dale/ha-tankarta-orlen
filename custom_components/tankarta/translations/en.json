@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Connect Tankarta",
-        "description": "Setup opens `business.tankarta.cz` through Browserless, signs in and reads `/Dashboard-ListPrice`. Products are created as dynamic price sensors. `divisionID` is not configured, displayed or stored.",
+        "description": "Setup opens `business.tankarta.cz` through Browserless, signs in and loads `/Dashboard-ListPrice`. Products are created as dynamic price sensors. `divisionID` is discovered automatically and exposed only as the `division_id` attribute of its sensor.",
         "data": {
           "username": "Tankarta username",
           "password": "Tankarta password",

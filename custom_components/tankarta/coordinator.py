@@ -60,11 +60,17 @@ class TankartaDataUpdateCoordinator(DataUpdateCoordinator[TankartaData]):
     async def _async_update_data(self) -> TankartaData:
         try:
             payload = await self.api.async_fetch()
-            return parse_prices(
+            data = parse_prices(
                 payload,
                 now=dt_util.utcnow(),
                 privacy_salt=self.privacy_salt,
             )
+            _LOGGER.debug(
+                "Loaded %d Tankarta price sensors; skipped %d malformed items",
+                len(data.readings),
+                data.skipped_item_count,
+            )
+            return data
         except TankartaAuthenticationError as err:
             raise ConfigEntryAuthFailed(str(err)) from err
         except BrowserlessAuthenticationError as err:

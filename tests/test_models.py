@@ -28,7 +28,7 @@ SAMPLE = [
 ]
 
 
-def test_sample_payload_creates_seven_readings_without_raw_division_id() -> None:
+def test_sample_payload_creates_seven_readings_with_division_attribute() -> None:
     data = parse_prices(
         SAMPLE,
         now=datetime(2026, 7, 27, tzinfo=UTC),
@@ -50,10 +50,14 @@ def test_sample_payload_creates_seven_readings_without_raw_division_id() -> None
         for reading in data.readings.values()
         if reading.product == "Verva 100"
     ) == Decimal("48.67")
-    assert "101010" not in repr(data)
+    reading = next(
+        reading for reading in data.readings.values() if reading.product == "Verva 100"
+    )
+    assert reading.division_id == 101010
+    assert "101010" not in reading.key
 
 
-def test_duplicate_product_names_are_privately_disambiguated() -> None:
+def test_duplicate_product_names_are_disambiguated_with_opaque_keys() -> None:
     data = parse_prices(
         [
             {"divisionID": 100, "product": "Efecta 95", "productPrice": 40},
@@ -67,5 +71,6 @@ def test_duplicate_product_names_are_privately_disambiguated() -> None:
         "Efecta 95 (varianta 1)",
         "Efecta 95 (varianta 2)",
     }
-    assert "100" not in repr(data)
-    assert "200" not in repr(data)
+    assert {reading.division_id for reading in data.readings.values()} == {100, 200}
+    assert all("100" not in reading.key for reading in data.readings.values())
+    assert all("200" not in reading.key for reading in data.readings.values())

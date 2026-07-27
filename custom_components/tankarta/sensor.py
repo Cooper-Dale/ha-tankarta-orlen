@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Any
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -83,6 +84,17 @@ class TankartaPriceSensor(TankartaEntity, SensorEntity):
     def native_value(self) -> Decimal | None:
         reading = self.coordinator.data.readings.get(self._reading_key)
         return reading.price if reading is not None else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose source metadata returned by Tankarta."""
+        reading = self.coordinator.data.readings.get(self._reading_key)
+        if reading is None:
+            return {}
+        return {
+            "product": reading.product,
+            "division_id": reading.division_id,
+        }
 
 
 class TankartaLastUpdateSensor(TankartaEntity, SensorEntity):

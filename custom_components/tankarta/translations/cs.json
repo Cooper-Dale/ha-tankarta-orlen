@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Připojit Tankartu",
-        "description": "Nastavení otevře `business.tankarta.cz` přes Browserless, přihlásí se a načte `/Dashboard-ListPrice`. Produkty se vytvoří jako dynamické cenové senzory. `divisionID` se nezadává a integrace ho nikde nezobrazuje ani neukládá.",
+        "description": "Nastavení otevře `business.tankarta.cz` přes Browserless, přihlásí se a načte `/Dashboard-ListPrice`. Produkty se vytvoří jako dynamické cenové senzory. `divisionID` se načítá automaticky a zobrazí se pouze jako atribut `division_id` příslušného senzoru.",
         "data": {
           "username": "Uživatelské jméno Tankarty",
           "password": "Heslo Tankarty",

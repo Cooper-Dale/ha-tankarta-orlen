@@ -1,0 +1,14 @@
+{
+  "entity": {
+    "button": {
+      "refresh": {
+        "default": "mdi:refresh"
+      }
+    },
+    "sensor": {
+      "last_update": {
+        "default": "mdi:clock-check-outline"
+      }
+    }
+  }
+}
