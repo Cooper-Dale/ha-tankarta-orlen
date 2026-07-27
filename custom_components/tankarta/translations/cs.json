@@ -1,0 +1,87 @@
+{
+  "title": "Tankarta",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Připojit Tankartu",
+        "description": "Nastavení otevře `business.tankarta.cz` přes Browserless, přihlásí se a načte `/Dashboard-ListPrice`. Produkty se vytvoří jako dynamické cenové senzory. `divisionID` se nezadává a integrace ho nikde nezobrazuje ani neukládá.",
+        "data": {
+          "username": "Uživatelské jméno Tankarty",
+          "password": "Heslo Tankarty",
+          "browserless_url": "URL Browserless",
+          "browserless_token": "Token Browserless",
+          "currency": "Měna",
+          "headless": "Spustit bez viditelného okna",
+          "stealth": "Zapnout stealth režim",
+          "block_ads": "Blokovat reklamy",
+          "request_timeout": "Časový limit požadavku"
+        },
+        "data_description": {
+          "browserless_url": "Základní URL Browserless nebo WebSocket URL používaná například Changedetection.",
+          "browserless_token": "Ponech prázdné, pokud místní Browserless token nevyžaduje.",
+          "currency": "Třípísmenný kód ISO 4217, výchozí je CZK. Endpoint nevrací měnu ani jednotku produktu."
+        }
+      },
+      "reconfigure": {
+        "title": "Změnit nastavení Tankarty",
+        "description": "Prázdné heslo ponechá současné heslo. Změna uživatelského účtu není povolena; pro jiný účet přidej novou instanci integrace.",
+        "data": {
+          "username": "Uživatelské jméno Tankarty",
+          "password": "Nové heslo Tankarty",
+          "browserless_url": "URL Browserless",
+          "browserless_token": "Token Browserless",
+          "currency": "Měna",
+          "headless": "Spustit bez viditelného okna",
+          "stealth": "Zapnout stealth režim",
+          "block_ads": "Blokovat reklamy",
+          "request_timeout": "Časový limit požadavku"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Znovu přihlásit Tankartu",
+        "description": "Portál Tankarty odmítl uložené přihlašovací údaje.",
+        "data": {
+          "username": "Uživatelské jméno Tankarty",
+          "password": "Heslo Tankarty"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Nelze se spojit s Browserless nebo portálem Tankarty.",
+      "invalid_auth": "Neplatné přihlašovací údaje Tankarty nebo účet vyžaduje dvoufaktorové ověření.",
+      "invalid_browserless_auth": "Browserless odmítl token.",
+      "invalid_currency": "Měna musí být třípísmenný kód, například CZK.",
+      "invalid_data": "Tankarta vrátila neúplná nebo neočekávaná data cen.",
+      "unknown": "Neočekávaná chyba. Zkontroluj log Home Assistantu."
+    },
+    "abort": {
+      "already_configured": "Tento účet Tankarty je již nastaven.",
+      "reauth_successful": "Přihlašovací údaje Tankarty byly aktualizovány.",
+      "reconfigure_successful": "Nastavení Tankarty bylo aktualizováno.",
+      "unique_id_mismatch": "Zadané údaje patří jinému účtu Tankarty."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Aktualizace cen Tankarty",
+        "description": "Nastav interval automatického načítání vyhlašovaných cen. Ruční obnovení je dostupné tlačítkem.",
+        "data": {
+          "scan_interval": "Interval aktualizace"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "last_update": {
+        "name": "Poslední aktualizace"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "Obnovit ceny"
+      }
+    }
+  }
+}

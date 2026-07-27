@@ -1,0 +1,87 @@
+{
+  "title": "Tankarta",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect Tankarta",
+        "description": "Setup opens `business.tankarta.cz` through Browserless, signs in and reads `/Dashboard-ListPrice`. Products are created as dynamic price sensors. `divisionID` is not configured, displayed or stored.",
+        "data": {
+          "username": "Tankarta username",
+          "password": "Tankarta password",
+          "browserless_url": "Browserless URL",
+          "browserless_token": "Browserless token",
+          "currency": "Currency",
+          "headless": "Run headless",
+          "stealth": "Enable stealth mode",
+          "block_ads": "Block ads",
+          "request_timeout": "Request timeout"
+        },
+        "data_description": {
+          "browserless_url": "Browserless base URL or a WebSocket URL already used by a service such as Changedetection.",
+          "browserless_token": "Leave empty when the local Browserless instance does not require a token.",
+          "currency": "Three-letter ISO 4217 code. The default is CZK. The endpoint does not return a currency or product unit."
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Tankarta",
+        "description": "Leave the password empty to keep the current password. Changing to another account is not allowed; add another integration instance instead.",
+        "data": {
+          "username": "Tankarta username",
+          "password": "New Tankarta password",
+          "browserless_url": "Browserless URL",
+          "browserless_token": "Browserless token",
+          "currency": "Currency",
+          "headless": "Run headless",
+          "stealth": "Enable stealth mode",
+          "block_ads": "Block ads",
+          "request_timeout": "Request timeout"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reauthenticate Tankarta",
+        "description": "The Tankarta portal rejected the saved credentials.",
+        "data": {
+          "username": "Tankarta username",
+          "password": "Tankarta password"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to Browserless or the Tankarta portal.",
+      "invalid_auth": "Tankarta credentials are invalid or the account requires two-factor authentication.",
+      "invalid_browserless_auth": "Browserless rejected its token.",
+      "invalid_currency": "Currency must be a three-letter code such as CZK.",
+      "invalid_data": "Tankarta returned incomplete or unexpected price data.",
+      "unknown": "Unexpected error. Check the Home Assistant log."
+    },
+    "abort": {
+      "already_configured": "This Tankarta account is already configured.",
+      "reauth_successful": "Tankarta credentials were updated.",
+      "reconfigure_successful": "Tankarta configuration was updated.",
+      "unique_id_mismatch": "The supplied credentials belong to a different Tankarta account."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Tankarta price updates",
+        "description": "Set the automatic refresh interval for announced prices. A button remains available for manual updates.",
+        "data": {
+          "scan_interval": "Update interval"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "last_update": {
+        "name": "Last update"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "Refresh prices"
+      }
+    }
+  }
+}
