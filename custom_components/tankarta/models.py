@@ -6,7 +6,7 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 import hashlib
 import json
 from typing import Any
@@ -72,6 +72,20 @@ class PriceReading:
     division_id: Any
 
 
+
+
+@dataclass(frozen=True, slots=True)
+class PriceCalculation:
+    """A source price and its optional configured discount."""
+
+    announced_price: Decimal
+    effective_price: Decimal
+    discount_type: str
+    discount_value: Decimal | None
+    discount_amount: Decimal
+    price_type: str
+
+
 @dataclass(frozen=True, slots=True)
 class TankartaData:
     """A coordinated Tankarta update."""
@@ -80,6 +94,80 @@ class TankartaData:
     readings: Mapping[str, PriceReading]
     source_item_count: int
     skipped_item_count: int
+
+
+_MONEY_QUANTUM = Decimal("0.01")
+_PERCENT_BASE = Decimal("100")
+
+
+def _decimal_option(value: Any) -> Decimal | None:
+    """Return a finite non-negative decimal option or None."""
+    if value in (None, "") or isinstance(value, bool):
+        return None
+    try:
+        result = Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        return None
+    if not result.is_finite() or result <= 0:
+        return None
+    return result
+
+
+def calculate_price(
+    announced_price: Decimal,
+    *,
+    discount_amount: Any = None,
+    discount_percentage: Any = None,
+) -> PriceCalculation:
+    """Apply one optional amount or percentage discount to a source price."""
+    source = announced_price.quantize(_MONEY_QUANTUM, rounding=ROUND_HALF_UP)
+    amount = _decimal_option(discount_amount)
+    percentage = _decimal_option(discount_percentage)
+
+    if amount is not None and percentage is not None:
+        raise ValueError("Only one Tankarta discount type may be configured")
+
+    if amount is not None:
+        configured = amount.quantize(_MONEY_QUANTUM, rounding=ROUND_HALF_UP)
+        applied = min(source, configured)
+        effective = (source - applied).quantize(
+            _MONEY_QUANTUM, rounding=ROUND_HALF_UP
+        )
+        return PriceCalculation(
+            announced_price=source,
+            effective_price=effective,
+            discount_type="amount",
+            discount_value=configured,
+            discount_amount=applied,
+            price_type="discounted",
+        )
+
+    if percentage is not None:
+        configured = percentage.normalize()
+        applied = (source * configured / _PERCENT_BASE).quantize(
+            _MONEY_QUANTUM, rounding=ROUND_HALF_UP
+        )
+        applied = min(source, applied)
+        effective = (source - applied).quantize(
+            _MONEY_QUANTUM, rounding=ROUND_HALF_UP
+        )
+        return PriceCalculation(
+            announced_price=source,
+            effective_price=effective,
+            discount_type="percentage",
+            discount_value=configured,
+            discount_amount=applied,
+            price_type="discounted",
+        )
+
+    return PriceCalculation(
+        announced_price=source,
+        effective_price=source,
+        discount_type="none",
+        discount_value=None,
+        discount_amount=Decimal("0.00"),
+        price_type="base",
+    )
 
 
 def account_fingerprint(username: str) -> str:

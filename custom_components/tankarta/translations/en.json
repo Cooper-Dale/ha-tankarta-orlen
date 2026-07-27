@@ -69,12 +69,23 @@
   "options": {
     "step": {
       "init": {
-        "title": "Tankarta price updates",
-        "description": "Set the automatic refresh interval for announced prices. A button remains available for manual updates.",
+        "title": "Tankarta price updates and discount",
+        "description": "Set the refresh interval and an optional discount from the announced price. Configure at most one discount method; leave both fields empty to keep the base price.",
         "data": {
-          "scan_interval": "Update interval"
+          "scan_interval": "Update interval",
+          "discount_amount": "Discount amount",
+          "discount_percentage": "Discount percentage"
+        },
+        "data_description": {
+          "discount_amount": "A fixed amount subtracted from the announced price.",
+          "discount_percentage": "A percentage subtracted from the announced price."
         }
       }
+    },
+    "error": {
+      "discount_both_set": "Configure either a discount amount or a discount percentage, not both.",
+      "invalid_discount_amount": "The discount amount is invalid.",
+      "invalid_discount_percentage": "The discount percentage must be between 0 and 100."
     }
   },
   "entity": {

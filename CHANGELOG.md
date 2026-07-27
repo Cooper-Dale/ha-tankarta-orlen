@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.4
+
+- Přidána volitelná sleva v nastavení integrace, buď jako pevná částka, nebo procentní podíl.
+- Výsledný stav cenového senzoru obsahuje cenu po slevě; bez nastavené slevy zůstává stav shodný s vyhlašovanou cenou.
+- Cenové senzory mají nové atributy `announced_price`, `price_type`, `discount_type`, `discount_amount` a při procentní slevě také `discount_percentage`.
+- Oba způsoby slevy jsou vzájemně výlučné, výpočet se zaokrouhluje na dvě desetinná místa a výsledná cena neklesne pod nulu.
+
 ## 0.1.3
 
 - Opraveno načítání cen: `/Dashboard-ListPrice` je AJAX POST, nikoli GET.

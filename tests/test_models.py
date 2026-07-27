@@ -74,3 +74,65 @@ def test_duplicate_product_names_are_disambiguated_with_opaque_keys() -> None:
     assert {reading.division_id for reading in data.readings.values()} == {100, 200}
     assert all("100" not in reading.key for reading in data.readings.values())
     assert all("200" not in reading.key for reading in data.readings.values())
+
+calculate_price = _MODELS.calculate_price
+
+
+def test_fixed_discount_is_subtracted_from_announced_price() -> None:
+    calculation = calculate_price(
+        Decimal("43.67"),
+        discount_amount="2.30",
+    )
+
+    assert calculation.announced_price == Decimal("43.67")
+    assert calculation.effective_price == Decimal("41.37")
+    assert calculation.discount_type == "amount"
+    assert calculation.discount_value == Decimal("2.30")
+    assert calculation.discount_amount == Decimal("2.30")
+    assert calculation.price_type == "discounted"
+
+
+def test_percentage_discount_is_rounded_to_currency_precision() -> None:
+    calculation = calculate_price(
+        Decimal("43.67"),
+        discount_percentage="5",
+    )
+
+    assert calculation.announced_price == Decimal("43.67")
+    assert calculation.discount_amount == Decimal("2.18")
+    assert calculation.effective_price == Decimal("41.49")
+    assert calculation.discount_type == "percentage"
+    assert calculation.discount_value == Decimal("5")
+    assert calculation.price_type == "discounted"
+
+
+def test_missing_discount_keeps_base_price() -> None:
+    calculation = calculate_price(Decimal("43.67"))
+
+    assert calculation.effective_price == Decimal("43.67")
+    assert calculation.discount_type == "none"
+    assert calculation.discount_amount == Decimal("0.00")
+    assert calculation.price_type == "base"
+
+
+def test_discount_never_makes_price_negative() -> None:
+    calculation = calculate_price(
+        Decimal("1.00"),
+        discount_amount="2.30",
+    )
+
+    assert calculation.discount_amount == Decimal("1.00")
+    assert calculation.effective_price == Decimal("0.00")
+
+
+def test_two_discount_types_are_rejected() -> None:
+    try:
+        calculate_price(
+            Decimal("43.67"),
+            discount_amount="2.30",
+            discount_percentage="5",
+        )
+    except ValueError as err:
+        assert "Only one" in str(err)
+    else:
+        raise AssertionError("Expected two simultaneous discounts to be rejected")

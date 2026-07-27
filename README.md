@@ -70,6 +70,19 @@ Surový identifikátor se stále nepoužívá v názvu entity, `entity_id`, `uni
 
 Pokud endpoint vrátí stejný produkt pro více divizí, názvy budou například `Verva Diesel (varianta 1)` a `Verva Diesel (varianta 2)`; konkrétní divizi lze poznat podle atributu `division_id`.
 
+## Sleva a výsledná cena
+
+V nastavení integrace lze zadat buď pevnou slevu v částce, nebo procentní slevu. Obě pole nelze použít současně. Pokud zůstávají prázdná, stav senzoru představuje základní vyhlašovanou cenu.
+
+Při nastavené slevě je stav senzoru cena po odečtení slevy. Zdrojová cena z portálu zůstává v atributu `announced_price`. Cenový senzor dále obsahuje:
+
+- `price_type`: `base` nebo `discounted`,
+- `discount_type`: `none`, `amount` nebo `percentage`,
+- `discount_amount`: skutečně odečtená částka v měně senzoru,
+- `discount_percentage`: nastavené procento, pouze při procentní slevě.
+
+Výpočet se zaokrouhluje na dvě desetinná místa a výsledná cena neklesne pod nulu. Nastavení je dostupné přes **Nastavení → Zařízení a služby → Tankarta → Konfigurovat**.
+
 ## Ikony
 
 Od verze 0.1.1 obsahuje integrace vlastní lokální brand obrázky pro světlý i tmavý režim. Cenové entity používají:
@@ -122,9 +135,9 @@ do:
 
 Restartuj Home Assistant a přidej integraci přes uživatelské rozhraní.
 
-## Aktualizace
+## Nastavení aktualizace a slevy
 
-Výchozí interval je 360 minut. Lze jej změnit v:
+Výchozí interval je 360 minut. Interval i volitelnou slevu lze změnit v:
 
 ```text
 Nastavení → Zařízení a služby → Tankarta → Konfigurovat

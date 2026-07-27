@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from decimal import Decimal, InvalidOperation
 import logging
 import re
 from typing import Any, Mapping
@@ -28,6 +29,8 @@ from .const import (
     CONF_BROWSERLESS_TOKEN,
     CONF_BROWSERLESS_URL,
     CONF_CURRENCY,
+    CONF_DISCOUNT_AMOUNT,
+    CONF_DISCOUNT_PERCENTAGE,
     CONF_HEADLESS,
     CONF_REQUEST_TIMEOUT,
     CONF_SCAN_INTERVAL,
@@ -40,6 +43,8 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_STEALTH,
     DOMAIN,
+    MAX_DISCOUNT_AMOUNT,
+    MAX_DISCOUNT_PERCENTAGE,
     MAX_REQUEST_TIMEOUT,
     MAX_SCAN_INTERVAL,
     MIN_REQUEST_TIMEOUT,
@@ -136,15 +141,11 @@ def connection_schema(
     )
 
 
-def options_schema(defaults: Mapping[str, Any] | None = None):
-    """Build polling options."""
-    data = dict(defaults or {})
+def options_schema(*, currency: str = DEFAULT_CURRENCY):
+    """Build polling and optional discount settings."""
     return vol.Schema(
         {
-            vol.Required(
-                CONF_SCAN_INTERVAL,
-                default=data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
-            ): NumberSelector(
+            vol.Required(CONF_SCAN_INTERVAL): NumberSelector(
                 NumberSelectorConfig(
                     min=MIN_SCAN_INTERVAL,
                     max=MAX_SCAN_INTERVAL,
@@ -152,9 +153,61 @@ def options_schema(defaults: Mapping[str, Any] | None = None):
                     mode=NumberSelectorMode.BOX,
                     unit_of_measurement="min",
                 )
-            )
+            ),
+            vol.Optional(CONF_DISCOUNT_AMOUNT): NumberSelector(
+                NumberSelectorConfig(
+                    min=0,
+                    max=MAX_DISCOUNT_AMOUNT,
+                    step=0.01,
+                    mode=NumberSelectorMode.BOX,
+                    unit_of_measurement=currency,
+                )
+            ),
+            vol.Optional(CONF_DISCOUNT_PERCENTAGE): NumberSelector(
+                NumberSelectorConfig(
+                    min=0,
+                    max=MAX_DISCOUNT_PERCENTAGE,
+                    step=0.01,
+                    mode=NumberSelectorMode.BOX,
+                    unit_of_measurement="%",
+                )
+            ),
         }
     )
+
+
+def normalize_discount_options(data: dict[str, Any]) -> None:
+    """Validate mutually exclusive discount options and normalize storage."""
+    normalized: dict[str, Decimal | None] = {}
+    for key in (CONF_DISCOUNT_AMOUNT, CONF_DISCOUNT_PERCENTAGE):
+        value = data.get(key)
+        if value in (None, "", 0, 0.0, "0"):
+            data.pop(key, None)
+            normalized[key] = None
+            continue
+        try:
+            decimal_value = Decimal(str(value))
+        except (InvalidOperation, ValueError) as err:
+            raise ValueError(key) from err
+        if not decimal_value.is_finite() or decimal_value < 0:
+            raise ValueError(key)
+        if decimal_value == 0:
+            data.pop(key, None)
+            normalized[key] = None
+            continue
+        data[key] = float(decimal_value)
+        normalized[key] = decimal_value
+
+    if normalized.get(CONF_DISCOUNT_AMOUNT) is not None and normalized.get(
+        CONF_DISCOUNT_PERCENTAGE
+    ) is not None:
+        raise ValueError("discount_both_set")
+    percentage = normalized.get(CONF_DISCOUNT_PERCENTAGE)
+    if percentage is not None and percentage > MAX_DISCOUNT_PERCENTAGE:
+        raise ValueError(CONF_DISCOUNT_PERCENTAGE)
+    amount = normalized.get(CONF_DISCOUNT_AMOUNT)
+    if amount is not None and amount > MAX_DISCOUNT_AMOUNT:
+        raise ValueError(CONF_DISCOUNT_AMOUNT)
 
 
 async def validate_input(hass: HomeAssistant, data: Mapping[str, Any]) -> None:
@@ -308,20 +361,39 @@ class TankartaConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class TankartaOptionsFlow(OptionsFlowWithReload):
-    """Manage the Tankarta polling interval."""
+    """Manage polling and price discount settings."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
-        """Configure optional polling behavior."""
+        """Configure optional polling and discount behavior."""
+        errors: dict[str, str] = {}
         if user_input is not None:
             user_input[CONF_SCAN_INTERVAL] = int(user_input[CONF_SCAN_INTERVAL])
-            return self.async_create_entry(data=user_input)
+            try:
+                normalize_discount_options(user_input)
+            except ValueError as err:
+                reason = str(err)
+                if reason == "discount_both_set":
+                    errors["base"] = "discount_both_set"
+                elif reason == CONF_DISCOUNT_PERCENTAGE:
+                    errors["base"] = "invalid_discount_percentage"
+                else:
+                    errors["base"] = "invalid_discount_amount"
+            else:
+                return self.async_create_entry(data=user_input)
 
         defaults = dict(self.config_entry.options)
+        defaults.update(user_input or {})
         defaults.setdefault(
             CONF_SCAN_INTERVAL,
             self.config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
         )
+        currency = str(
+            self.config_entry.data.get(CONF_CURRENCY, DEFAULT_CURRENCY)
+        ).upper()
         return self.async_show_form(
             step_id="init",
-            data_schema=options_schema(defaults),
+            data_schema=self.add_suggested_values_to_schema(
+                options_schema(currency=currency), defaults
+            ),
+            errors=errors,
         )

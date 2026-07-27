@@ -12,6 +12,8 @@ CONF_BLOCK_ADS = "block_ads"
 CONF_REQUEST_TIMEOUT = "request_timeout"
 CONF_SCAN_INTERVAL = "scan_interval"
 CONF_CURRENCY = "currency"
+CONF_DISCOUNT_AMOUNT = "discount_amount"
+CONF_DISCOUNT_PERCENTAGE = "discount_percentage"
 
 DEFAULT_BROWSERLESS_URL = "http://db21ed7f-browserless-chrome:3000"
 DEFAULT_STEALTH = True
@@ -25,6 +27,8 @@ MIN_REQUEST_TIMEOUT = 30
 MAX_REQUEST_TIMEOUT = 300
 MIN_SCAN_INTERVAL = 15
 MAX_SCAN_INTERVAL = 1440
+MAX_DISCOUNT_AMOUNT = 100000
+MAX_DISCOUNT_PERCENTAGE = 100
 
 BASE_URL = "https://business.tankarta.cz"
 LOGIN_URL = f"{BASE_URL}/Login?ReturnUrl=%2F"

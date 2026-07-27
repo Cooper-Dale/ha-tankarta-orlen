@@ -69,12 +69,23 @@
   "options": {
     "step": {
       "init": {
-        "title": "Aktualizace cen Tankarty",
-        "description": "Nastav interval automatického načítání vyhlašovaných cen. Ruční obnovení je dostupné tlačítkem.",
+        "title": "Aktualizace a sleva cen Tankarty",
+        "description": "Nastav interval načítání a volitelnou slevu z vyhlašované ceny. Vyplň nejvýše jeden způsob slevy; prázdná pole ponechají základní cenu.",
         "data": {
-          "scan_interval": "Interval aktualizace"
+          "scan_interval": "Interval aktualizace",
+          "discount_amount": "Sleva v částce",
+          "discount_percentage": "Sleva v procentech"
+        },
+        "data_description": {
+          "discount_amount": "Pevná částka odečtená od vyhlašované ceny.",
+          "discount_percentage": "Procentní podíl odečtený z vyhlašované ceny."
         }
       }
+    },
+    "error": {
+      "discount_both_set": "Vyplň pouze slevu v částce, nebo pouze slevu v procentech.",
+      "invalid_discount_amount": "Sleva v částce není platná.",
+      "invalid_discount_percentage": "Procentní sleva musí být v rozsahu od 0 do 100."
     }
   },
   "entity": {

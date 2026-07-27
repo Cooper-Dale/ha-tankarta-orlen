@@ -14,8 +14,14 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import TankartaConfigEntry
-from .const import CONF_CURRENCY, DEFAULT_CURRENCY
+from .const import (
+    CONF_CURRENCY,
+    CONF_DISCOUNT_AMOUNT,
+    CONF_DISCOUNT_PERCENTAGE,
+    DEFAULT_CURRENCY,
+)
 from .entity import TankartaEntity
+from .models import PriceCalculation, calculate_price
 
 
 async def async_setup_entry(
@@ -55,6 +61,7 @@ class TankartaPriceSensor(TankartaEntity, SensorEntity):
     def __init__(self, entry: TankartaConfigEntry, reading_key: str) -> None:
         super().__init__(entry, entry.runtime_data.coordinator, f"price_{reading_key}")
         self._reading_key = reading_key
+        self._entry = entry
         reading = self.coordinator.data.readings[reading_key]
         self._attr_name = reading.display_name
         self._attr_icon = self._icon_for_product(reading.product)
@@ -80,21 +87,44 @@ class TankartaPriceSensor(TankartaEntity, SensorEntity):
         reading = self.coordinator.data.readings.get(self._reading_key)
         return reading.display_name if reading is not None else str(self._attr_name)
 
+    def _price_calculation(self) -> PriceCalculation | None:
+        reading = self.coordinator.data.readings.get(self._reading_key)
+        if reading is None:
+            return None
+        return calculate_price(
+            reading.price,
+            discount_amount=self._entry.options.get(CONF_DISCOUNT_AMOUNT),
+            discount_percentage=self._entry.options.get(
+                CONF_DISCOUNT_PERCENTAGE
+            ),
+        )
+
     @property
     def native_value(self) -> Decimal | None:
-        reading = self.coordinator.data.readings.get(self._reading_key)
-        return reading.price if reading is not None else None
+        calculation = self._price_calculation()
+        return calculation.effective_price if calculation is not None else None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Expose source metadata returned by Tankarta."""
+        """Expose source price, discount and Tankarta metadata."""
         reading = self.coordinator.data.readings.get(self._reading_key)
-        if reading is None:
+        calculation = self._price_calculation()
+        if reading is None or calculation is None:
             return {}
-        return {
+
+        attributes: dict[str, Any] = {
             "product": reading.product,
             "division_id": reading.division_id,
+            "announced_price": float(calculation.announced_price),
+            "price_type": calculation.price_type,
+            "discount_type": calculation.discount_type,
+            "discount_amount": float(calculation.discount_amount),
         }
+        if calculation.discount_type == "percentage":
+            attributes["discount_percentage"] = float(
+                calculation.discount_value or Decimal("0")
+            )
+        return attributes
 
 
 class TankartaLastUpdateSensor(TankartaEntity, SensorEntity):
