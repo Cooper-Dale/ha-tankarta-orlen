@@ -47,9 +47,14 @@ from .const import (
 )
 from .models import (
     BrowserlessAuthenticationError,
+    BrowserlessConnectionError,
     TankartaAuthenticationError,
-    TankartaConnectionError,
+    TankartaChallengeError,
     TankartaDataError,
+    TankartaEndpointError,
+    TankartaLoginFormError,
+    TankartaPortalConnectionError,
+    TankartaTwoFactorError,
     account_fingerprint,
     parse_prices,
 )
@@ -272,12 +277,22 @@ class TankartaConfigFlow(ConfigFlow, domain=DOMAIN):
             await validate_input(self.hass, data)
         except InvalidCurrencyError:
             return "invalid_currency"
+        except TankartaTwoFactorError:
+            return "two_factor_required"
+        except TankartaChallengeError:
+            return "challenge_required"
         except TankartaAuthenticationError:
             return "invalid_auth"
         except BrowserlessAuthenticationError:
             return "invalid_browserless_auth"
-        except TankartaConnectionError:
-            return "cannot_connect"
+        except BrowserlessConnectionError:
+            return "cannot_connect_browserless"
+        except TankartaPortalConnectionError:
+            return "cannot_connect_portal"
+        except TankartaEndpointError:
+            return "endpoint_not_found"
+        except TankartaLoginFormError:
+            return "login_form_changed"
         except TankartaDataError:
             return "invalid_data"
         except Exception:

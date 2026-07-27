@@ -19,10 +19,12 @@ from .const import (
 )
 from .models import (
     BrowserlessAuthenticationError,
+    BrowserlessConnectionError,
     TankartaAuthenticationError,
-    TankartaConnectionError,
     TankartaData,
     TankartaDataError,
+    TankartaEndpointError,
+    TankartaPortalConnectionError,
     parse_prices,
 )
 
@@ -77,5 +79,10 @@ class TankartaDataUpdateCoordinator(DataUpdateCoordinator[TankartaData]):
             raise UpdateFailed(
                 "Browserless authentication failed; reconfigure the integration"
             ) from err
-        except (TankartaConnectionError, TankartaDataError) as err:
+        except (
+            BrowserlessConnectionError,
+            TankartaPortalConnectionError,
+            TankartaEndpointError,
+            TankartaDataError,
+        ) as err:
             raise UpdateFailed(str(err)) from err

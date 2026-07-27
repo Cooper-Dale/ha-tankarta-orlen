@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 import json
+import logging
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
@@ -29,10 +30,17 @@ from .const import (
 )
 from .models import (
     BrowserlessAuthenticationError,
+    BrowserlessConnectionError,
     TankartaAuthenticationError,
-    TankartaConnectionError,
+    TankartaChallengeError,
     TankartaDataError,
+    TankartaEndpointError,
+    TankartaLoginFormError,
+    TankartaPortalConnectionError,
+    TankartaTwoFactorError,
 )
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,12 +75,12 @@ def normalize_browserless_function_url(config: TankartaApiConfig) -> str:
     """Convert a Browserless base or WebSocket URL to the function endpoint."""
     raw = config.browserless_url.strip()
     if not raw:
-        raise TankartaConnectionError("Browserless URL is empty")
+        raise BrowserlessConnectionError("Browserless URL is empty")
 
     parsed = urlsplit(raw)
     scheme = {"ws": "http", "wss": "https"}.get(parsed.scheme, parsed.scheme)
     if scheme not in {"http", "https"} or not parsed.netloc:
-        raise TankartaConnectionError(
+        raise BrowserlessConnectionError(
             "Browserless URL must use http, https, ws or wss"
         )
 
@@ -100,6 +108,86 @@ def normalize_browserless_function_url(config: TankartaApiConfig) -> str:
     query.setdefault("timeout", str((config.request_timeout + 15) * 1000))
 
     return urlunsplit((scheme, parsed.netloc, function_path, urlencode(query), ""))
+
+
+def _safe_diagnostics(value: Any) -> dict[str, Any]:
+    """Keep only bounded diagnostic metadata that never contains secret values."""
+    if not isinstance(value, Mapping):
+        return {}
+
+    allowed_scalar_keys = {
+        "stage",
+        "http_status",
+        "response_url",
+        "content_type",
+        "page_url",
+        "page_title",
+        "login_post_observed",
+        "list_price_post_observed",
+        "list_price_request_body_length",
+        "list_price_request_content_type",
+        "request_method",
+        "response_length",
+        "product_count",
+    }
+    safe: dict[str, Any] = {}
+    for key in allowed_scalar_keys:
+        item = value.get(key)
+        if isinstance(item, (str, int, float, bool)) or item is None:
+            safe[key] = item
+
+    forms = value.get("forms")
+    if isinstance(forms, Sequence) and not isinstance(forms, (str, bytes, bytearray)):
+        safe_forms: list[dict[str, Any]] = []
+        for form in list(forms)[:4]:
+            if not isinstance(form, Mapping):
+                continue
+            safe_form: dict[str, Any] = {
+                "method": str(form.get("method") or "")[:12],
+                "action": str(form.get("action") or "")[:240],
+            }
+            fields = form.get("fields")
+            if isinstance(fields, Sequence) and not isinstance(
+                fields, (str, bytes, bytearray)
+            ):
+                safe_fields: list[dict[str, str]] = []
+                for field in list(fields)[:20]:
+                    if not isinstance(field, Mapping):
+                        continue
+                    safe_fields.append(
+                        {
+                            "type": str(field.get("type") or "")[:40],
+                            "name": str(field.get("name") or "")[:80],
+                            "id": str(field.get("id") or "")[:80],
+                            "autocomplete": str(
+                                field.get("autocomplete") or ""
+                            )[:80],
+                        }
+                    )
+                safe_form["fields"] = safe_fields
+            safe_forms.append(safe_form)
+        safe["forms"] = safe_forms
+    return safe
+
+
+def _diagnostic_log_text(diagnostics: Mapping[str, Any]) -> str:
+    """Format a compact safe diagnostic string for Home Assistant logs."""
+    return " ".join(
+        f"{key}={diagnostics.get(key)!r}"
+        for key in (
+            "stage",
+            "http_status",
+            "response_url",
+            "page_url",
+            "login_post_observed",
+            "list_price_post_observed",
+            "list_price_request_body_length",
+            "list_price_request_content_type",
+            "request_method",
+            "content_type",
+        )
+        if key in diagnostics
+    )
 
 
 class TankartaApi:
@@ -147,23 +235,19 @@ class TankartaApi:
                         f"Browserless rejected the request with HTTP {response.status}"
                     )
                 if response.status < 200 or response.status >= 300:
-                    raise TankartaConnectionError(
+                    raise BrowserlessConnectionError(
                         f"Browserless returned HTTP {response.status}"
                     )
                 try:
                     decoded = json.loads(text)
                 except json.JSONDecodeError as err:
-                    raise TankartaDataError(
+                    raise BrowserlessConnectionError(
                         "Browserless response was not valid JSON"
                     ) from err
-        except (
-            BrowserlessAuthenticationError,
-            TankartaConnectionError,
-            TankartaDataError,
-        ):
+        except (BrowserlessAuthenticationError, BrowserlessConnectionError):
             raise
         except (ClientError, TimeoutError) as err:
-            raise TankartaConnectionError(
+            raise BrowserlessConnectionError(
                 f"Browserless request failed: {type(err).__name__}"
             ) from err
 
@@ -171,16 +255,45 @@ class TankartaApi:
         if isinstance(decoded, dict) and "data" in decoded:
             result = decoded["data"]
         if not isinstance(result, dict):
-            raise TankartaDataError("Browserless returned an unexpected JSON value")
+            raise BrowserlessConnectionError(
+                "Browserless returned an unexpected JSON envelope"
+            )
 
         if not result.get("success"):
             code = str(result.get("code") or "unknown")
             message = str(result.get("error") or "Browserless function failed")
-            if code in {"authentication_failed", "two_factor_required"}:
-                raise TankartaAuthenticationError(message)
-            if code in {"login_form_changed", "invalid_payload"}:
-                raise TankartaDataError(message)
-            raise TankartaConnectionError(f"{code}: {message}")
+            diagnostics = _safe_diagnostics(result.get("diagnostics"))
+            _LOGGER.warning(
+                "Tankarta browser task failed: code=%s %s",
+                code,
+                _diagnostic_log_text(diagnostics),
+            )
+            _LOGGER.debug(
+                "Tankarta safe browser diagnostics: %s",
+                json.dumps(diagnostics, ensure_ascii=False, sort_keys=True),
+            )
+
+            if code == "two_factor_required":
+                raise TankartaTwoFactorError(message, diagnostics=diagnostics)
+            if code == "challenge_required":
+                raise TankartaChallengeError(message, diagnostics=diagnostics)
+            if code == "authentication_failed":
+                raise TankartaAuthenticationError(message, diagnostics=diagnostics)
+            if code == "login_form_changed":
+                raise TankartaLoginFormError(message, diagnostics=diagnostics)
+            if code in {"portal_unreachable", "portal_http_error"}:
+                raise TankartaPortalConnectionError(message, diagnostics=diagnostics)
+            if code in {
+                "endpoint_not_found",
+                "endpoint_http_error",
+                "list_price_request_not_observed",
+            }:
+                raise TankartaEndpointError(message, diagnostics=diagnostics)
+            if code == "invalid_payload":
+                raise TankartaDataError(message, diagnostics=diagnostics)
+            raise TankartaDataError(
+                f"{code}: {message}", diagnostics=diagnostics
+            )
 
         prices = result.get("prices")
         if (
@@ -192,5 +305,11 @@ class TankartaApi:
         browser_session = result.get("session")
         if isinstance(browser_session, dict):
             self._browser_session = browser_session
+
+        diagnostics = _safe_diagnostics(result.get("diagnostics"))
+        _LOGGER.debug(
+            "Tankarta browser task succeeded: %s",
+            _diagnostic_log_text(diagnostics),
+        )
 
         return [item for item in prices if isinstance(item, Mapping)]

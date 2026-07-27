@@ -6,7 +6,7 @@
   "integration_type": "service",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/Cooper-Dale/ha-tankarta/issues",
-  "name": "Tankarta",
+  "name": "Tankarta Orlen prices",
   "requirements": [],
-  "version": "0.1.0"
+  "version": "0.1.3"
 }

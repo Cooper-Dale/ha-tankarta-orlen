@@ -13,23 +13,52 @@ from typing import Any
 
 
 class TankartaError(Exception):
-    """Base Tankarta error."""
+    """Base Tankarta error with optional safe diagnostic metadata."""
 
-
-class TankartaAuthenticationError(TankartaError):
-    """Tankarta credentials were rejected."""
+    def __init__(
+        self,
+        message: str,
+        *,
+        diagnostics: Mapping[str, Any] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.diagnostics = dict(diagnostics or {})
 
 
 class BrowserlessAuthenticationError(TankartaError):
     """Browserless credentials were rejected."""
 
 
-class TankartaConnectionError(TankartaError):
-    """Browserless or Tankarta could not be reached."""
+class BrowserlessConnectionError(TankartaError):
+    """Browserless could not be reached or returned an invalid envelope."""
+
+
+class TankartaPortalConnectionError(TankartaError):
+    """The Tankarta portal itself could not be reached."""
+
+
+class TankartaAuthenticationError(TankartaError):
+    """The Tankarta session could not be authenticated."""
+
+
+class TankartaTwoFactorError(TankartaAuthenticationError):
+    """The Tankarta account requires an OTP step."""
+
+
+class TankartaChallengeError(TankartaAuthenticationError):
+    """The Tankarta login page requires an interactive challenge."""
+
+
+class TankartaEndpointError(TankartaError):
+    """The authenticated list-price endpoint was unavailable."""
 
 
 class TankartaDataError(TankartaError):
     """Tankarta returned unexpected or incomplete data."""
+
+
+class TankartaLoginFormError(TankartaDataError):
+    """The Tankarta login form no longer matches supported selectors."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,7 +108,7 @@ def _division_material(value: Any) -> str:
 
 
 def _reading_key(*, privacy_salt: str, division_id: Any, product: str) -> str:
-    """Hash the division and product without retaining or exposing divisionID."""
+    """Hash the division and product without placing divisionID in registry keys."""
     material = "\0".join(
         (privacy_salt, _division_material(division_id), product.strip().casefold())
     )
@@ -92,7 +121,7 @@ def parse_prices(
     now: datetime,
     privacy_salt: str,
 ) -> TankartaData:
-    """Parse list prices and produce privacy-preserving dynamic entity keys."""
+    """Parse list prices and produce stable dynamic entity keys."""
     if isinstance(payload, (str, bytes, bytearray)) or not isinstance(payload, Sequence):
         raise TankartaDataError("Tankarta list-price response is not an array")
     if now.tzinfo is None:
@@ -114,12 +143,12 @@ def parse_prices(
             skipped += 1
             continue
 
+        division_id = item.get("divisionID")
         key = _reading_key(
             privacy_salt=privacy_salt,
-            division_id=item.get("divisionID"),
+            division_id=division_id,
             product=product,
         )
-        division_id = item.get("divisionID")
         previous = parsed.get(key)
         if previous is not None and previous[1] != price:
             raise TankartaDataError(

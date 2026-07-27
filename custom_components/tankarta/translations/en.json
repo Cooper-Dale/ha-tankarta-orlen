@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Connect Tankarta",
-        "description": "Setup opens `business.tankarta.cz` through Browserless, signs in and loads `/Dashboard-ListPrice`. Products are created as dynamic price sensors. `divisionID` is discovered automatically and exposed only as the `division_id` attribute of its sensor.",
+        "description": "Setup opens `business.tankarta.cz` through Browserless, signs in and captures the native AJAX `POST /Dashboard-ListPrice` sent by the dashboard. Products are created as dynamic price sensors. `divisionID` is discovered automatically and exposed only as the `division_id` attribute of its sensor.",
         "data": {
           "username": "Tankarta username",
           "password": "Tankarta password",
@@ -47,12 +47,17 @@
       }
     },
     "error": {
-      "cannot_connect": "Cannot connect to Browserless or the Tankarta portal.",
-      "invalid_auth": "Tankarta credentials are invalid or the account requires two-factor authentication.",
+      "invalid_auth": "Tankarta login did not create a valid session. Check the username and password.",
       "invalid_browserless_auth": "Browserless rejected its token.",
       "invalid_currency": "Currency must be a three-letter code such as CZK.",
       "invalid_data": "Tankarta returned incomplete or unexpected price data.",
-      "unknown": "Unexpected error. Check the Home Assistant log."
+      "unknown": "Unexpected error. Check the Home Assistant log.",
+      "cannot_connect_browserless": "Cannot connect to Browserless, or Browserless returned an invalid response.",
+      "cannot_connect_portal": "Browserless works, but the Tankarta portal cannot be loaded.",
+      "endpoint_not_found": "Login succeeded, but the Tankarta price endpoint was not found or returned an HTTP error.",
+      "two_factor_required": "The Tankarta account requires two-factor authentication, which the integration cannot complete automatically.",
+      "challenge_required": "The Tankarta login page requires an interactive verification challenge or CAPTCHA.",
+      "login_form_changed": "The Tankarta login form changed. Enable debug logging and provide the safe form diagnostics."
     },
     "abort": {
       "already_configured": "This Tankarta account is already configured.",

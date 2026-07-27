@@ -3,7 +3,7 @@
 Vlastní HACS integrace pro přihlášení do portálu `business.tankarta.cz` a vytvoření cenových senzorů z JSON endpointu:
 
 ```text
-https://business.tankarta.cz/Dashboard-ListPrice
+POST https://business.tankarta.cz/Dashboard-ListPrice
 ```
 
 Integrace používá Browserless Chromium stejně jako předchozí integrace INMES. Home Assistant proto nepotřebuje lokální Python balíček Playwright.
@@ -165,3 +165,10 @@ Integrace úmyslně neloguje:
 ## Omezení
 
 Portál není veřejné API a může změnit přihlašovací formulář nebo endpoint. Config flow při přidání integrace provede skutečné přihlášení a načtení cen, takže nefunkční selektory nebo změněný JSON zjistí před uložením konfigurace.
+
+
+## Jak se ceny načítají
+
+Endpoint `/Dashboard-ListPrice` není navigovatelná stránka. Dashboard jej volá jako AJAX `POST` s formulářovým tělem, `X-Requested-With`, aktivními cookies a dynamickým kontextem dashboardu. Integrace proto tělo požadavku nekonstruuje ani neukládá. Nechá dashboard požadavek vytvořit a zachytí pouze JSON odpověď.
+
+Debug diagnostika může uvést metodu, Content-Type a délku těla požadavku, nikdy však jeho obsah, cookies ani tokeny.

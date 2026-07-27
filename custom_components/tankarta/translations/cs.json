@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Připojit Tankartu",
-        "description": "Nastavení otevře `business.tankarta.cz` přes Browserless, přihlásí se a načte `/Dashboard-ListPrice`. Produkty se vytvoří jako dynamické cenové senzory. `divisionID` se načítá automaticky a zobrazí se pouze jako atribut `division_id` příslušného senzoru.",
+        "description": "Nastavení otevře `business.tankarta.cz` přes Browserless, přihlásí se a zachytí nativní AJAX `POST /Dashboard-ListPrice`, který odesílá dashboard. Produkty se vytvoří jako dynamické cenové senzory. `divisionID` se načítá automaticky a zobrazí se pouze jako atribut `division_id` příslušného senzoru.",
         "data": {
           "username": "Uživatelské jméno Tankarty",
           "password": "Heslo Tankarty",
@@ -47,12 +47,17 @@
       }
     },
     "error": {
-      "cannot_connect": "Nelze se spojit s Browserless nebo portálem Tankarty.",
-      "invalid_auth": "Neplatné přihlašovací údaje Tankarty nebo účet vyžaduje dvoufaktorové ověření.",
+      "invalid_auth": "Přihlášení Tankarty nevytvořilo platnou relaci. Zkontroluj uživatelské jméno a heslo.",
       "invalid_browserless_auth": "Browserless odmítl token.",
       "invalid_currency": "Měna musí být třípísmenný kód, například CZK.",
       "invalid_data": "Tankarta vrátila neúplná nebo neočekávaná data cen.",
-      "unknown": "Neočekávaná chyba. Zkontroluj log Home Assistantu."
+      "unknown": "Neočekávaná chyba. Zkontroluj log Home Assistantu.",
+      "cannot_connect_browserless": "Nelze se spojit s Browserless nebo Browserless vrátil neplatnou odpověď.",
+      "cannot_connect_portal": "Browserless funguje, ale nelze načíst portál Tankarty.",
+      "endpoint_not_found": "Přihlášení proběhlo, ale dashboard neposlal cenový POST nebo endpoint Tankarty vrátil chybu HTTP.",
+      "two_factor_required": "Účet Tankarty vyžaduje dvoufaktorové ověření, které integrace neumí automaticky dokončit.",
+      "challenge_required": "Přihlašovací stránka Tankarty vyžaduje interaktivní ověření nebo CAPTCHA.",
+      "login_form_changed": "Přihlašovací formulář Tankarty se změnil. Zapni debug log a pošli bezpečnou diagnostiku formuláře."
     },
     "abort": {
       "already_configured": "Tento účet Tankarty je již nastaven.",
